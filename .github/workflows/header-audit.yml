@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - production
+
+jobs:
+  compile:
+    name: Compiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.1
+      - uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.92.0'
+          extended: true
+
+      - name: (env) pnpm
+        run: curl -L https://raw.githubusercontent.com/pnpm/self-installer/master/install.js | node
+
+      - run: pnpm install
+
+      - run: make build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Check - Broken header links
+        id: link-check
+        uses: untitaker/hyperlink@0.1.27
+        with:
+          args: public/ --sources content/ --check-anchors
+        env:
+          STORE_ERRORS_PATH: ${{ runner.temp }}/link_check_errors.txt
+
+  log-output:
+    needs: compile
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Error Log
+        id: read-error-log
+        run: |
+          echo "::set-output name=errors::$(cat $STORE_ERRORS_PATH)"
+      
+      - name: Log Output
+        run: |
+          echo "Link Check Output:"
+          echo "$(cat $STORE_ERRORS_PATH)"
