@@ -1,0 +1,195 @@
+{{- $dataArray := slice }}
+{{- $availableOptions := slice -}}
+
+{{- range readDir "./data/" -}}
+{{- if in .Name ".yml" -}}
+{{- $productName :=  replace .Name ".yml" "" -}}
+{{- $productData := index $.Site.Data $productName -}}
+{{- with index $productData "product" -}}
+{{- $dataArray = $dataArray | append 
+(dict "group" .group "title" .title  "show" (default true .show) "url" 
+.url "wrap" (default false .wrap)) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- range .Site.Pages  -}}
+{{- $relpermalink := .RelPermalink -}}
+{{- with index .Params "product_grid"  -}}
+{{- $dataArray = $dataArray | append (dict "group" .group "title" .title 
+ "show" (default false .show) "url" $relpermalink "wrap" (default false .wrap)) -}}
+{{- end -}}
+{{- end -}}
+
+{{- range $dataArray -}}
+{{- with .group -}}
+
+{{ $availableOptions = $availableOptions | append . }}
+{{- end -}}
+{{- end -}}
+
+{{- $availableOptions = $availableOptions | uniq | sort -}}
+
+{{- $dataArray = sort $dataArray ".title" -}}
+
+<style>
+  .QuadBlockGrid {
+    max-width: var(--docs-max-page-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 2.6rem var(--docs-content-gap) 3.5rem;
+    text-align: center;
+  }
+  .QuadBlock {
+    display: inline-block;
+    padding: 0 0.5rem 1rem;
+  }
+
+  .ProductGrid--filter {
+    width: 100%;
+    height: 3em;
+    padding: 1em;
+  }
+
+  .ProductGrid--content {
+    --n: 1;
+    display: grid;
+    flex-direction: column;
+    grid-template-columns: repeat(var(--n), 1fr);
+    gap: 5px;
+    padding-bottom: 3em;
+    border-bottom: 1px solid gray;
+  }
+
+  .ProductGrid--link {
+    border-left: 5px solid #F6821F;
+  }
+
+  @media screen and (min-width: 600px) {
+    .ProductGrid--content {
+      --n: 2;
+    }
+  }
+
+  @media screen and (min-width: 978px) {
+    .QuadBlockGrid {
+      flex-direction: row;
+    }
+
+    .ProductGrid--content {
+      --n: 3;
+    }
+  }
+
+  @media screen and (min-width: 1200px) {
+    .ProductGrid--content {
+      --n: 4;
+    }
+  }
+
+  .emptyState a {
+    text-decoration: underline;
+  }
+
+  .emptyState {
+    font-size: 1.5em;
+    padding-left: 2.5em
+  }
+
+</style>
+
+<div class="QuadBlockGrid">
+  <input
+    class="ProductGrid--filter"
+    type="text"
+    id="search"
+    onkeyup="filterProducts()"
+    placeholder="Search products..."
+  />
+  </div>
+
+<div class="ProductGrid">
+  <div id="ProductGrid--range">
+  {{- range $availableOptions -}}
+  {{- $currentOption := . }}
+  <div class="ProductGridSection">
+  <h2 class="ProductGrid--title" style="padding-bottom:1em;font-size:2em; scroll-margin-top: 2em;" id="{{ $currentOption | safeURL | anchorize }}"><span class="DocsMarkdown--header-anchor-positioner">
+    <a
+      class="DocsMarkdown--header-anchor Link Link-without-underline"
+      href="#{{ $currentOption | safeURL | anchorize }}"
+      >&#8203;​</a
+    >
+  </span>
+    <span>{{$currentOption}}</span>
+    </h2>
+  <div class="ProductGrid--content">
+    {{- range $dataArray -}} 
+      {{- if and (eq $currentOption .group) (ne .show false) -}}
+        {{- $wrap := default false .wrap -}}
+        <a
+          class="ProductGrid--link"
+          data-wrap-title="{{ $wrap }}"
+          href="{{ .url }}"
+        >
+          <span>{{ .title }}</span>
+        </a>
+        {{- end -}}
+      {{- end -}}
+  </div>
+  </div>
+  {{- end -}}
+  <p id="emptyState" class="emptyState" style="display: none">Not finding what you need? Use our <a href="/search/">full search</a>.</p>
+</div>
+</div>
+
+<script>
+  function filterProducts() {
+    // Search input and items
+    var input = document.getElementById("search"); // User input
+    var query = input.value.toUpperCase(); // Make input non-case sensitive
+    var grid = document.getElementById("ProductGrid--range"); // Convert Hugo range to JS
+    var items = grid.getElementsByTagName("a"); // Extract tiles
+
+    // TODO: Search by URL, description (i.e. "cloudflare one" = Cloudflare Zero Trust)
+
+    // Iterate through products
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var text = item.innerText.toUpperCase();
+      if (text.indexOf(query) > -1) {
+        item.style.display = "";
+      } else {
+        item.style.display = "none";
+      }
+    }
+
+    var productAreas = document.getElementsByClassName("ProductGridSection")
+    var visibleSections = false;
+
+    for (section of productAreas) {
+      var visibleLinks = false;
+      var links = section.getElementsByClassName("ProductGrid--link")
+      for (link of links) {
+        if (link.style.display !== "none") {
+          visibleLinks = true
+        }
+      }
+      if (!visibleLinks) {
+        section.style.display = "none";
+      } else {
+        section.style.display = "";
+        visibleSections = true
+      }
+    }
+
+    var emptyStateMessage = document.getElementById("emptyState")
+    if (!visibleSections) {
+      emptyStateMessage.style.display = "";
+      emptyStateMessage.children[0].style.display = "";
+      emptyStateMessage.children[0].setAttribute('href', "/search/#q=" + query.toLowerCase() + "&t=Docs" )
+    } else {
+      emptyStateMessage.style.display = "none";
+    }
+
+  }
+</script>
