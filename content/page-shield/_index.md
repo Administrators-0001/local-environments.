@@ -1,0 +1,30 @@
+---
+title: Overview
+pcx_content_type: overview
+weight: 1
+layout: list
+meta:
+  title: Cloudflare Page Shield
+---
+
+# Cloudflare Page Shield
+
+Page Shield provides you with visibility on your application's JavaScript dependencies and the destinations of the connections they make, and allows you to receive alerts when they change. These features help you detect attacks happening in your end users' browsers.
+
+Page Shield includes the following features:
+
+* **Script monitor**: Displays information about scripts detected in your domain's pages.
+* **Connection monitor**: Displays information about connections made by the scripts in your domain's pages.
+* **Page attribution**: Allows you to find in which page a script first appeared, and view a list of the latest occurrences of the script in your pages.
+* **Malicious script detection**: Detects malicious scripts in your pages using threat intelligence and machine learning.
+* **Code change detection**: Detects any changes in the scripts loaded in your pages.
+* **Alerts**: Receive notifications about newly detected scripts, scripts loaded from unknown domains, new scripts considered malicious, or code changes in your existing scripts.
+
+{{<button-group>}}
+  {{<button type="primary" href="/page-shield/get-started/">}}Get started{{</button>}}
+  {{<button type="secondary" href="/page-shield/about/">}}Learn more{{</button>}}
+{{</button-group>}}
+
+## Availability
+
+{{<feature-table id="security.page_shield">}}
