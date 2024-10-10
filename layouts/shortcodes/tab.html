@@ -1,0 +1,3 @@
+{{- $label := replace (.Get "label") "/" "-"}}
+
+<div class="tab" id="tab-{{$label}}">{{ $.Inner | markdownify }}</div>
