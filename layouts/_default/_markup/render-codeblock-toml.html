@@ -1,0 +1,35 @@
+{{ if (strings.Contains .Inner "filename: wrangler.toml") }}
+<div class="tabs-wrapper">
+    <nav role="navigation" class="tabs">
+        <ul class="tab-active">
+            <li class="tab-label-wrapper">
+                <a class="tab-label noCodeLabel" href="#">
+                    wrangler.toml
+                </a>
+            </li>
+            <li class="tab-label-wrapper">
+                <a class="tab-label noCodeLabel" href="#">
+                    wrangler.json
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <div class="tab tab-default">
+        <div class="code-container">
+            <unparsed-codeblock data-language="{{ .Type }}" data-code="{{ urlquery (strings.Replace .Inner "filename: wrangler.toml" "") }}"></unparsed-codeblock>
+            <vue-component name="CodeCopy"></vue-component>
+        </div>
+    </div>
+    <div class="tab">
+        <div class="code-container">
+            <toml-to-json data-toml="{{ urlquery .Inner }}"/></toml-to-json>
+            <vue-component name="CodeCopy"></vue-component>
+        </div>
+    </div>
+</div>
+{{ else }}
+<div class="code-container">
+    <unparsed-codeblock data-language="{{ .Type }}" data-code="{{ urlquery .Inner }}"></unparsed-codeblock>
+    <vue-component name="CodeCopy"></vue-component>
+</div>
+{{ end }}
