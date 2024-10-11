@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "mhutchie.git-graph",
+        "EditorConfig.EditorConfig",
+        "astro-build.astro-vscode",
+        "unifiedjs.vscode-mdx",
+        "bradlc.vscode-tailwindcss",
+        "redhat.vscode-yaml"
+    ]
+}
