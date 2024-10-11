@@ -1,0 +1,44 @@
+---
+pcx_content_type: concept
+title: Builds
+description: Leverage Workers Builds to integrate with Git and automatically build and deploy your project when you make a change.
+sidebar:
+  badge:
+    text: Beta
+---
+
+Connect your existing Worker to a GitHub or GitLab repository to set up automatic build and deployment for your Worker.
+
+## Get Started
+
+To set up your Git integration with a Worker:
+
+1. **Select your Worker** in the Dashboard and navigate to the Build settings of your Worker under the Settings tab.
+2. **Select the Git provider** you’d like to connect to by clicking "Connect". Follow the prompts to install the Cloudflare application on your git account.
+3. **Configure your build settings** by selecting your desired git repository, branch and configuring a deploy command.
+   :::caution
+   In Closed Beta, only GitHub respositories can be cloned successfully. GitLab projects are not yet supported.
+   :::
+4. **Push a commit** to your repository to trigger your first build and deploy.
+
+If you have a monorepo or [Wrangler Enviornments](/workers/wrangler/environments/) setup, reference [Build Configuration](/workers/ci-cd/builds/build-configuration).
+
+## Build Details
+
+When a build is in progress you can monitor the build by viewing its logs. Navigate to the “View build history” on the deployments page, and select “View Build”. The build can take on the status of in progress, queued, successful, failed and canceled builds.
+
+When a commit is successfully built and deployed, you can also view build details for each new version created with git.
+
+## Build Limits
+
+In Closed Beta, the following limits are applicable for Workers Builds:
+
+| Metric                | Description                                                                        | Limit     |
+| --------------------- | ---------------------------------------------------------------------------------- | --------- |
+| **Build Minutes**     | The amount of minutes that it takes to build a project.                            | Unlimited |
+| **Concurrent Builds** | Number of builds that run in parallel across an account.                           | 1         |
+| **Build Timeout**     | The amount of minutes that a build can be run before it is interrupted and failed. | 20 mins   |
+
+## Pricing
+
+xyz
