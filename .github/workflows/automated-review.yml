@@ -1,0 +1,105 @@
+name: Automated review
+
+# **What it does**: Adds a comment to highlight potential issues and fixes.
+# **Why we have it**: Makes contributing and reviewing easier.
+# **Who does it impact**: All contributors.
+
+on:
+  pull_request:
+    branches:
+      - production
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Check for existing comment (if not create a new one)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            existing_comment_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" | \
+              jq '.[] | select(.user.id == 41898282) | select(.body | contains("Automatically generated comment")) | .id')
+
+            comment_body_unformatted="## Automatically generated comment
+
+            **This comment is automatically generated and will be overwritten every time changes are committed to this branch.**
+          
+            ### Typo and language issues (non-blocking)
+            <!-- TYPO_PLACEHOLDER_START -->
+            <!-- TYPO_PLACEHOLDER_END -->"
+
+            comment_body=$(jq -n --arg body "$comment_body_unformatted" '{body: $body}')
+            # If a comment exists, update it. Otherwise, post a new comment.
+            if [ ! -z "$existing_comment_id" ]; then
+              curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -X PATCH -d "$comment_body" \
+                "https://api.github.com/repos/${{ github.repository }}/issues/comments/$existing_comment_id"
+            else
+              curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -X POST -d "$comment_body" \
+                "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+              new_comment_id=$(echo $new_comment_response | jq -r '.id')
+              echo "existing_comment_id=$new_comment_id"
+            fi
+
+            echo "COMMENT_ID=$existing_comment_id" >> $GITHUB_ENV
+
+      - name: Get Changed Files from Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # get file names and separate them with space ' '
+          files=$(gh pr diff ${{ github.event.pull_request.number }} --name-only | grep -E "\.md$" | xargs -I {} sh -c 'echo "\"./{}\""' | tr '\n' ' ')
+          echo "CHANGED_FILES=$files" >> "$GITHUB_ENV"
+
+      - name: Output Changed Files
+        run: echo ${{ env.CHANGED_FILES }}
+
+      - name: Install case-police
+        run: npm install -g case-police
+        if: ${{ !cancelled() && env.CHANGED_FILES != '' }}
+
+      - name: Case Police
+        run: case-police ${{ env.CHANGED_FILES }} --disable DoS > case_police_output.txt
+        if: ${{ !cancelled() && env.CHANGED_FILES != '' }}
+
+      - name: Case Police fails
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Read the saved comment ID
+          comment_id=${COMMENT_ID}
+
+          # Fetch the existing comment
+          existing_comment=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/comments/$comment_id")
+
+          # Extract the body of the existing comment
+          existing_comment_body=$(echo $existing_comment | jq -r '.body')
+
+          # Prepare the new comment body with case-police output
+          case_police_output=$(cat case_police_output.txt)
+          escaped_case_police_output=$(echo "$case_police_output" | sed 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g; s/\n/\\n/g')
+          new_comment_body=$(echo "$existing_comment_body" | sed "s|<!-- TYPO_PLACEHOLDER_START -->.*<!-- TYPO_PLACEHOLDER_END -->|<!-- TYPO_PLACEHOLDER_START -->$escaped_case_police_output<!-- TYPO_PLACEHOLDER_END -->|")
+
+          # Format the new comment body as JSON
+          updated_comment_body=$(jq -n --arg body "$new_comment_body" '{body: $body}')
+
+          # Update the comment
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -X PATCH -d "$updated_comment_body" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/comments/$comment_id"
