@@ -1,0 +1,52 @@
+name: Request content addition
+description: Request NEW documentation content.
+labels: ["documentation", "content:new"]
+body:
+  - type: input
+    id: subject
+    validations:
+      required: true
+    attributes:
+      label: Subject Matter
+      description: What needs to be documented?
+
+  - type: input
+    id: products
+    validations:
+      required: true
+    attributes:
+      label: Cloudflare Products
+      description: Which Cloudflare products or features does this request relate to?
+      
+  - type: textarea
+    id: location-urls
+    validations:
+      required: true
+    attributes:
+      label: Proposed changes
+      description: Describe the changes you are proposing and provide links to the revelant Cloudflare documentation pages the changes should apply to.
+      placeholder: |
+        Describe the changes you are proposing.
+        
+        Link examples:
+        - https://developers.cloudflare.com/cloudflare-one/
+        - https://developers.cloudflare.com/workers/examples/
+
+  - type: textarea
+    id: location
+    validations:
+      required: true
+    attributes:
+      label: Content Location
+      placeholder: Should this be a new document, a new section within an existing document, or a call-out within a section?
+      description: |
+        Where would you expect this addition to be placed?
+        Please provide any URLs to existing documents.
+
+  - type: textarea
+    id: extra
+    validations:
+      required: false
+    attributes:
+      label: Additional information
+      description: Any other details or screenshots that may be relevant.
