@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - production
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Compiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.1
+
+      - run: npm ci
+
+      - run: make build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Check - Broken Links
+        run: npm run crawl
+
+      - name: Check - Validate redirects (infinite loops, sources with fragment)
+        run: npx tsm bin/validate-redirects.ts
+
+      - name: Lint
+        run: npm run lint
