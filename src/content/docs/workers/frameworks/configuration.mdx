@@ -1,0 +1,131 @@
+---
+pcx_content_type: concept
+title: Configuration
+sidebar:
+  order: 7
+  badge: Beta
+head: []
+description: Create a Worker with assets throught the wrangler CLI or through a Git integration.
+---
+
+import {
+	Badge,
+	Description,
+	FileTree,
+	InlineBadge,
+	Render,
+	TabItem,
+	Tabs,
+} from "~/components";
+
+# Static Sites
+
+## Routing
+
+:::note
+We are working on default config options. Once that is implemented, this default routing logic will change.
+:::
+
+Static sites contain only static assets, without any server side JavaScript.
+
+Assets are served based on file based routing. Any requests that don't match a file are unhandled and will lead to a 404 response. For example, take the following project:
+
+wrangler.toml file:
+
+```sh title="wrangler.toml"
+name = "workers-static-assets"
+compatibility_date = "2024-08-29"
+
+[experimental_assets]
+directory = "./public"
+```
+
+Directory structure:
+
+<FileTree>
+- …
+- public
+ - index.html
+ - contact.html
+ - blog
+   - index.html
+   - archive.html
+</FileTree>
+
+File based routing would map incoming paths to the following files:
+
+| Incoming Request | File Served     |
+| ---------------- | --------------- |
+| /index.html      | index.html      |
+| /blog/index.html | blog/index.html |
+| /                | 404             |
+| /blog/archive    | 404             |
+
+# Dynamic Sites
+
+## Routing
+
+Static sites contain static assets as well as server-side code to dynamically render webpages. Dynamic sites can take advantage of any Workers [bindings](/workers/runtime-apis) to build stateful, full-stack applications.
+
+Requests are first served based on file based routing. Any requests that don't match a file will invoke your dynamic code. For example, take the following project:
+
+wrangler.toml file:
+
+```sh title="wrangler.toml"
+name = "workers-dynamic-assets-template"
+main = "src/index.ts"
+compatibility_date = "2024-08-29"
+
+[experimental_assets]
+directory = "./public"
+name = ASSETS
+```
+
+Directory structure:
+
+<FileTree>
+- …
+- public
+ - index.html
+ - contact.html
+ - blog
+   - index.html
+   - archive.html
+- src
+  - index.js
+</FileTree>
+
+File based routing would map incoming paths to the following files:
+
+| Incoming Request | File Served     |
+| ---------------- | --------------- |
+| /index.html      | index.html      |
+| /blog/index.html | blog/index.html |
+| /                | index.js        |
+| /blog/archive    | index.js        |
+| /foo             | index.js        |
+
+````
+
+## Assets Binding
+
+Your dynamic code can make or forward requests to your project’s static assets using the assets binding[link out to bindings page]. For example:
+
+<Tabs> <TabItem label="JavaScript" icon="seti:javascript">
+```js
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) {
+      // TODO: Add your custom /api/* logic here.
+      return new Response('Ok');
+    }
+    // Otherwise, serve the static assets.
+    // Without this, the Worker will error and no assets will be served.
+    return env.ASSETS.fetch(request);
+  },
+}
+```
+
+</TabItem> <TabItem label="TypeScript" icon="seti:typescript">
+````

@@ -1,0 +1,75 @@
+---
+pcx_content_type: get-started
+title: Get started
+sidebar:
+  order: 2
+  badge: Beta
+head: []
+description: Create a Worker with assets throught the wrangler CLI or through a Git integration.
+---
+
+import { Badge, Description, InlineBadge, Render } from "~/components";
+
+Projects with assets can be created and edited using the [Wrangler CLI](/workers/wrangler/) or by connecting to your Worker Git provider[link to CI docs]. You cannot upload or edit a Worker with assets through the Cloudflare dashboard.
+
+# Create a new application via CLI
+
+## 1. Clone an existing Github repository
+
+If you're building a static site, use this Github repository as a template to get started:
+
+```sh
+git clone https://github.com/tanushree-sharma/workers-assets-template
+```
+
+If you're building a dynamic site, use this Github repository as a template to get started:
+
+```sh
+git clone https://github.com/tanushree-sharma/workers-dynamic-assets-template
+```
+
+:::note
+Will be moving this step to the C3 "clone from template" flow. There is currently a bug blocking this.
+:::
+
+## 2. Develop locally
+
+After you have created your Worker, run the [`wrangler dev`](/workers/wrangler/commands/#dev) command in the project directory to start a local server for developing your Worker. This will allow you to preview your Worker locally during development.
+
+```sh
+npx wrangler dev
+```
+
+### Routing
+
+#### Static Site
+
+Assets are served based on file based routing. Navigate to `yourdomain.dev/index.html`, in order serve the `index.html` file in your root directory. If a request is made to a path that does not match a file in your directory, Clouflare will respond with a 404.
+
+Learn more about [routing configuration](/workers/frameworks/configuration/).
+
+#### Dynamic Site
+
+Similar to static sites, dynamic sites assets also follow file based routing. However, if a request is made to a path that does not match a file in your directory, instead of serving a 404, the request will be handled by the server-side code in your Worker.
+
+Learn more about [routing configuration](/workers/frameworks/configuration/).
+
+:::note
+We are working on default config options. Once that is implemented, this default routing logic will change. Routing to yourdomain.dom will server inded.html by default.
+:::
+
+## 3. Write code
+
+Modify ayour Worker to build your application.
+
+## 4. Deploy your Project
+
+Deploy your Worker via Wrangler to a `*.workers.dev` subdomain or a [Custom Domain](/workers/configuration/routing/custom-domains/).
+
+```sh
+npx wrangler deploy
+```
+
+# Connecting an existing application from Git
+
+To-do
