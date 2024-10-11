@@ -1,0 +1,224 @@
+---
+title: Server-side validation
+pcx_content_type: get-started
+weight: 3
+---
+
+# Server-side validation
+
+Turnstile needs to be verified using siteverify because it is a front-end widget that creates a token which is cryptographically secured. To ensure that a token is not forged by an attacker or has not been consumed yet, it is necessary to check the validity of a token using Cloudflare's siteverify API.
+
+You must call the siteverify endpoint to validate the Turnstile widget response from your website’s backend. The widget response must only be considered valid once it has been verified by the siteverify endpoint. The presence of a response alone is not enough to verify it as it does not protect from replay or forgery attacks. In some cases, Turnstile may purposely create invalid responses that are rejected by the siteverify API.
+
+Tokens issued to Turnstile using the success callbacks, via explicit or implicit rendering, must be validated using the siteverify endpoint. The siteverify API will only validate a token once. If a token has already been checked, the siteverify API will yield an error on subsequent verification attempts indicating that a token has already been consumed. 
+
+{{<Aside type="note">}}
+A Turnstile token can have up to 2048 characters. 
+
+It is also valid for 300 seconds before it is rejected by siteverify.
+{{</Aside>}}
+
+The siteverify endpoint needs to be passed a {{<glossary-tooltip term_id="secret key">}}secret key{{</glossary-tooltip>}} that is associated with the {{<glossary-tooltip term_id="sitekey">}}sitekey{{</glossary-tooltip>}}. The secret key will be provisioned alongside the sitekey when you create a widget. Furthermore, the response needs to be passed to the siteverify endpoint.
+
+A response may only be validated once. If the same response is presented twice, the second and each subsequent request will generate an error stating that the response has already been consumed. If an application requires to retry failed requests, it must utilize the idempotency functionality. You can do so by providing a UUID as the `idempotency_key` parameter of your `POST` request when initially validating the response and the same UUID with any subsequent request for that response.
+
+<div>
+
+```sh
+---
+header: Example using cURL
+---
+$ curl 'https://challenges.cloudflare.com/turnstile/v0/siteverify' --data 'secret=verysecret&response=<RESPONSE>'
+{
+  "success": true,
+  "error-codes": [],
+  "challenge_ts": "2022-10-06T00:07:23.274Z",
+  "hostname": "example.com"
+}
+```
+</div>
+
+<div>
+
+```javascript
+---
+header: Example using fetch from Cloudflare Workers
+---
+// This is the demo secret key. In production, we recommend
+// you store your secret key(s) safely.
+const SECRET_KEY = '1x0000000000000000000000000000000AA';
+
+async function handlePost(request) {
+	const body = await request.formData();
+	// Turnstile injects a token in "cf-turnstile-response".
+	const token = body.get('cf-turnstile-response');
+	const ip = request.headers.get('CF-Connecting-IP');
+
+	// Validate the token by calling the
+	// "/siteverify" API endpoint.
+	let formData = new FormData();
+	formData.append('secret', SECRET_KEY);
+	formData.append('response', token);
+	formData.append('remoteip', ip);
+
+	const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+	const result = await fetch(url, {
+		body: formData,
+		method: 'POST',
+	});
+
+	const outcome = await result.json();
+	if (outcome.success) {
+		// ...
+	}
+}
+```
+</div>
+
+<div>
+
+```javascript
+---
+header: Example using idempotency functionality
+---
+// This is the demo secret key. In production, we recommend
+// you store your secret key(s) safely.
+const SECRET_KEY = '1x0000000000000000000000000000000AA';
+
+async function handlePost(request) {
+	const body = await request.formData();
+	// Turnstile injects a token in "cf-turnstile-response".
+	const token = body.get('cf-turnstile-response');
+	const ip = request.headers.get('CF-Connecting-IP');
+
+	// Validate the token by calling the
+	// "/siteverify" API endpoint.
+	let formData = new FormData();
+	formData.append('secret', SECRET_KEY);
+	formData.append('response', token);
+	formData.append('remoteip', ip);
+	const idempotencyKey = crypto.randomUUID();
+	formData.append('idempotency_key', idempotencyKey);	
+
+	const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+	const firstResult = await fetch(url, {
+		body: formData,
+		method: 'POST',
+	});
+	const firstOutcome = await firstResult.json();
+	if (firstOutcome.success) {
+		// ...
+	}
+
+	// A subsequent validation request to the "/siteverify" 
+	// API endpoint for the same token as before, providing 
+	// the associated idempotency key as well.
+	const subsequentResult = await fetch(url, {
+		body: formData,
+		method: 'POST',
+	});
+
+	const subsequentOutcome = await subsequentResult.json();
+	if (subsequentOutcome.success) {
+		// ...
+	}
+
+}
+```
+</div>
+
+Refer to the [full demo on GitHub](https://github.com/cloudflare/turnstile-demo-workers/blob/main/src/index.mjs).
+
+## Accepted parameters
+
+| POST Parameter | Required/Optional | Description |
+| --- | --- | --- |
+| `secret` | Required | The site's secret key. |
+| `response` | Required | The response provided by the Turnstile client-side render on your site. |
+| `remoteip` | Optional | The user's IP address. |
+| `idempotency_key` | Optional | The UUID to be associated with the response. |
+| `affinity` | Optional | An optional storage location hint. |
+
+{{<Aside type="note">}}
+
+The `remoteip` parameter helps to prevent abuse by ensuring the current visitor is the one who received the token. This is currently not strictly validated.
+
+{{</Aside>}}
+
+The siteverify endpoint behaves similar to reCAPTCHA’s or hCaptcha's siteverify endpoint.
+The API accepts `application/x-www-form-urlencoded` and `application/json` requests, but the response type will always be `application/json`.
+
+It always contains a `success` property, either true or false, indicating whether the operation was successful or not.
+
+<div>
+
+```json
+---
+header: Successful validation response
+highlight: [2]
+---
+
+{
+  "success": true,
+  "challenge_ts": "2022-02-28T15:14:30.096Z",
+  "hostname": "example.com",
+  "error-codes": [],
+  "action": "login",
+  "cdata": "sessionid-123456789"
+}
+```
+</div>
+
+* `challenge_ts` is the ISO timestamp for the time the challenge was solved.
+* `hostname` is the hostname for which the challenge was served.
+* `action` is the customer widget identifier passed to the widget on the client side. This is used to differentiate widgets using the same sitekey in analytics. Its integrity is protected by modifications from an attacker. It is recommended to validate that the action matches an expected value.
+* `cdata` is the customer data passed to the widget on the client side. This can be used by the customer to convey state. It is integrity protected by modifications from an attacker.
+* `error-codes` is a list of errors that occurred.
+
+In case of a validation failure, the response should be similar to the following:
+
+<div>
+
+```json
+---
+header: Failed validation response
+highlight: [2]
+---
+
+{
+  "success": false,
+  "error-codes": [
+    "invalid-input-response"
+  ]
+}
+```
+</div>
+
+A validation error is indicated by having the `success` property set to `false`. A list of error codes is provided to indicate why a response has failed to verify. The response may also contain additional fields based on whether Turnstile siteverify was able to parse the response successfully or unsuccessfully.
+
+## Error codes
+
+| Error code | Description |
+| --- | --- |
+| `missing-input-secret` | The secret parameter was not passed. |
+| `invalid-input-secret` | The secret parameter was invalid or did not exist.|
+| `missing-input-response` | The response parameter was not passed. |
+| `invalid-input-response` | The response parameter is invalid or has expired. |
+| `invalid-widget-id` | The widget ID extracted from the parsed site secret key was invalid or did not exist. |
+| `invalid-parsed-secret` | The secret extracted from the parsed site secret key was invalid. |
+| `bad-request` | The request was rejected because it was malformed. |
+| `timeout-or-duplicate` | The response parameter has already been validated before. |
+| `internal-error` | An internal error happened while validating the response. The request can be retried. |
+
+
+## Affinity Hints (Optional)
+
+The Turnstile siteverify API keeps track of tokens that have been previously redeemed to avoid redemption of a token twice. By default this happens automatically in a Cloudflare datacenter nearby the server that is using the siteverify API.
+Moreoever, Turnstile is oftentimes smart enough to predict which different tokens issued on different regions transparently are validated by which server. However, when a token is cannot be checked in a Cloudflare datacenter nearby the request may go to a different Cloudflare datacenter in a different region, which can cause added latency to the calls to the siteverify api. Since Cloudflare does not know which server will check tokens from which region ahead of time the prediction can sometimes not work as expected. To this end the server can provide an affinity hint to the siteverify api stating which scope the token should be checked within.
+
+Values to the affinity parameter can be either
+
+* a string up to 12 characters (A-Za-z0-9.-_), with an abitrary labeling for the server that calls siteverify (e.g. `pandora`, `123m5`, `europe`, `lax-a`), or
+* a [location hint](durable-objects/reference/data-location) for a Durable Object (e.g., `weur` for Western Europe)
+
+Note that when an affinity hint is specified the token will only be checked within that particular affinity scope, e.g., if the a token was redeemed in `weur` before it may still be redeemable in `apac`.
