@@ -1,0 +1,23 @@
+{{- $href := (.Destination | safeURL) -}}
+{{- $text := (.Text | safeHTML) -}}
+{{- $internal := urls.Parse $href -}}
+{{- $fullPath := print $internal.Path | relLangURL -}}
+{{- $prefix := "/_docs-dash-sidebar" -}}
+{{- if and (strings.HasPrefix $href "http") (not (in $href "developers.cloudflare.com")) -}}
+  <a href="javascript:openInDashboard('{{ $href}}');" class="DocsMarkdown--link" >
+    <span class="DocsMarkdown--link-content">{{- $text -}}</span>
+    {{- partialCached "external.icon" . -}}
+  </a>
+{{- else if and (or (strings.HasPrefix $href "/api/") (in $href "developers.cloudflare.com/api/")) (ne $.Page.RelPermalink "/") -}}
+  {{- partial "api.link" (dict "url" $href "text" $text) -}}   
+{{- else -}}
+{{- $baseUrl := printf "%s%s" $prefix $href -}}
+{{ $finalUrl := $baseUrl }}
+<!-- FIXME: still does not handle relative links properly -->
+{{ if hasPrefix $href "#" }}
+  {{ $fragment := trim $href "#" }}
+  {{ $finalUrl = print $baseUrl "#" $fragment }}
+{{ end }}
+<a href="javascript:open('{{ $finalUrl}}');" class="DocsMarkdown--link"><span class="DocsMarkdown--link-content">{{- $text -}}</span></a>
+
+{{- end -}}
