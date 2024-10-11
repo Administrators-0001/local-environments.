@@ -1,0 +1,43 @@
+name: Determine Codeowners for Changed Files
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  determine-codeowners:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get Changed Files from Pull Request
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          files=$(gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files -q '.[] | select(.status != "removed") | .filename | select(test("(.yaml|yml|md)$"))')
+          echo "CHANGED_FILES=$files" >> "$GITHUB_ENV"
+
+      - name: Output Changed Files
+        run: echo ${{ env.CHANGED_FILES }}
+
+      - name: Get Codeowners
+        id: codeowners
+        run: echo "::set-output name=codeowners::$(cat .github/CODEOWNERS)"
+
+      - name: Determine Associated Users
+        id: associated_users
+        run: |
+          codeowners=$(echo "${{ steps.codeowners.outputs.codeowners }}")
+          IFS=$'\n' read -rd '' -a changed_files <<< "${{ env.CHANGED_FILES }}"
+          users=""
+          for file in "${changed_files[@]}"; do
+            users+="$(grep -F "$file" <<< "$codeowners" | cut -d ' ' -f 2- | tr '\n' ' ')"
+          done
+          echo "::set-output name=users::$users"
+
+      - name: Output Associated Users
+        run: |
+          echo "Associated Users: ${{ steps.associated_users.outputs.users }}"
